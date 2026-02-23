@@ -10,5 +10,3 @@ services:
       - ./certs:/etc/nginx/certs:ro
       - ./html:/usr/share/nginx/html:ro 
     restart: unless-stopped
-
-  
