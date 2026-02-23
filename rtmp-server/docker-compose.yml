@@ -1,0 +1,25 @@
+services:
+  rtmp:
+    build:
+      context: ./nginx
+    container_name: rtmp-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "1935:1935"
+
+  publisher:
+    image: ghcr.io/jrottenberg/ffmpeg:latest
+    container_name: ffmpeg-publisher
+    restart: unless-stopped
+    depends_on:
+      - rtmp
+    volumes:
+      - ./videos:/media:ro
+    command: >
+      -re
+      -stream_loop -1
+      -i /media/${VIDEO_FILE}
+      -c:v libx264 -preset veryfast -tune zerolatency -pix_fmt yuv420p
+      -c:a aac -b:a 128k -ar 44100
+      -f flv rtmp://rtmp/live/${STREAM_KEY}
