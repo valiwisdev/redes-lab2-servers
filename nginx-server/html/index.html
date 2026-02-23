@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Grupo 3 — Redes 🌐</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=VT323&family=Nunito:wght@900&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --green:  #39ff14;
+      --pink:   #ff2d78;
+      --blue:   #00cfff;
+      --yellow: #ffe600;
+      --purple: #7b2fff;
+      --dark:   #050508;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background: var(--dark);
+      overflow: hidden;
+      height: 100vh; width: 100vw;
+      cursor: none;
+      font-family: 'Nunito', sans-serif;
+    }
+
+    /* ── CANVAS LAYERS ── */
+    #c-stars, #c-grid, #c-particles {
+      position: fixed; inset: 0; pointer-events: none;
+      width: 100%; height: 100%;
+    }
+    #c-stars    { z-index: 0; }
+    #c-grid     { z-index: 1; opacity: .7; }
+    #c-particles{ z-index: 2; }
+
+    /* ── SCANLINES ── */
+    .scanlines {
+      position: fixed; inset: 0; z-index: 3; pointer-events: none;
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.18) 3px, rgba(0,0,0,0.18) 4px);
+    }
+
+    /* ── VIGNETTE ── */
+    .vignette {
+      position: fixed; inset: 0; z-index: 3; pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 50%, rgba(5,5,8,0.85) 100%);
+    }
+
+    /* ── CURSOR ── */
+    #cur  { position:fixed; width:22px; height:22px; border:2px solid var(--green); border-radius:50%; pointer-events:none; z-index:9999; transform:translate(-50%,-50%); transition:transform 0.08s, border-color 0.3s; }
+    #curd { position:fixed; width:7px;  height:7px;  background:var(--pink); border-radius:50%; pointer-events:none; z-index:9999; transform:translate(-50%,-50%); }
+
+    /* ── GLITCH ── */
+    @keyframes glitch {
+      0%,94%,100% { text-shadow: 3px 0 var(--pink), -3px 0 var(--blue); transform: skewX(0); }
+      95%  { text-shadow: -4px 0 var(--pink), 4px 0 var(--blue); transform: skewX(-3deg); clip-path: inset(10% 0 80% 0); }
+      96%  { text-shadow: 4px 0 var(--green); transform: skewX(2deg); clip-path: inset(60% 0 20% 0); }
+      97%  { text-shadow: -4px 0 var(--pink), 4px 0 var(--blue); transform: skewX(0); clip-path: none; }
+    }
+    .glitch {
+      font-family: 'Bebas Neue', sans-serif;
+      color: var(--yellow);
+      line-height: 0.88;
+      letter-spacing: 0.03em;
+      animation: glitch 4s infinite;
+    }
+
+    /* ── NEON FLICKER ── */
+    @keyframes flicker {
+      0%,19%,21%,23%,25%,54%,56%,100% { opacity:1; text-shadow: 0 0 8px var(--blue), 0 0 20px var(--blue), 0 0 40px var(--blue); }
+      20%,22%,24%,55% { opacity:0.5; text-shadow: none; }
+    }
+    .flicker {
+      font-family: 'Bebas Neue', sans-serif;
+      color: var(--blue);
+      line-height: 0.88;
+      animation: flicker 6s infinite;
+    }
+
+    /* ── RAINBOW WAVE ── */
+    @keyframes rainbowWave {
+      0%   { color: var(--pink); }
+      25%  { color: var(--yellow); }
+      50%  { color: var(--blue); }
+      75%  { color: var(--green); }
+      100% { color: var(--pink); }
+    }
+    .rainbow { animation: rainbowWave 2s linear infinite; }
+
+    /* ── PULSING NEON LINE ── */
+    .neon-line {
+      height: 2px;
+      background: linear-gradient(90deg, var(--purple), var(--blue), var(--green), var(--yellow), var(--pink));
+      background-size: 200% 100%;
+      animation: lineFlow 2s linear infinite, neonPulse 1.5s ease-in-out infinite alternate;
+      border-radius: 2px;
+    }
+    @keyframes lineFlow { from{background-position:0 0} to{background-position:200% 0} }
+    @keyframes neonPulse { from{box-shadow:0 0 6px var(--blue)} to{box-shadow:0 0 20px var(--blue), 0 0 40px var(--purple)} }
+
+    /* ── BADGE BOUNCE ── */
+    @keyframes badgeBounce {
+      0%,100% { transform: rotate(-4deg) scale(1); }
+      25%     { transform: rotate(5deg) scale(1.08); }
+      50%     { transform: rotate(-3deg) scale(0.95); }
+      75%     { transform: rotate(6deg) scale(1.05); }
+    }
+    .badge {
+      display: inline-block;
+      background: var(--pink);
+      color: #fff;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.3rem;
+      letter-spacing: 0.12em;
+      padding: 6px 22px;
+      border-radius: 9999px;
+      border: 3px solid var(--yellow);
+      box-shadow: 5px 5px 0 var(--yellow), 0 0 20px var(--pink);
+      animation: badgeBounce 1.8s ease-in-out infinite;
+    }
+
+    /* ── FLOATING EMOJIS ── */
+    @keyframes floatA { 0%,100%{transform:translateY(0) rotate(0deg);} 50%{transform:translateY(-18px) rotate(10deg);} }
+    @keyframes floatB { 0%,100%{transform:translateY(0) rotate(0deg);} 50%{transform:translateY(-12px) rotate(-8deg);} }
+    @keyframes floatC { 0%,100%{transform:translateY(0) rotate(0deg);} 50%{transform:translateY(-20px) rotate(5deg);} }
+    .fe1{animation:floatA 3s ease-in-out infinite;display:inline-block;}
+    .fe2{animation:floatB 2.5s ease-in-out infinite 0.5s;display:inline-block;}
+    .fe3{animation:floatC 3.5s ease-in-out infinite 1s;display:inline-block;}
+
+    /* ── TYPING CURSOR ── */
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .tcur { display:inline-block; width:10px; height:1.1em; background:var(--green); vertical-align:middle; margin-left:3px; animation:blink 1s step-end infinite; }
+
+    /* ── FLYING PACKETS ── */
+    @keyframes fly1 { 0%{transform:translateX(-120px);opacity:0} 5%{opacity:1} 95%{opacity:1} 100%{transform:translateX(110vw);opacity:0} }
+    @keyframes fly2 { 0%{transform:translateX(110vw);opacity:0} 5%{opacity:1} 95%{opacity:1} 100%{transform:translateX(-120px);opacity:0} }
+    .pkt { position:fixed; font-size:1.6rem; pointer-events:none; z-index:3; }
+    .pkt1{top:12%; animation:fly1 5s linear infinite;}
+    .pkt2{top:78%; animation:fly2 7s linear infinite 1s;}
+    .pkt3{top:50%; animation:fly1 9s linear infinite 3s;}
+    .pkt4{top:32%; animation:fly2 6s linear infinite 2s;}
+    .pkt5{top:63%; animation:fly1 8s linear infinite 4s;}
+
+    /* ── PULSE DOT ── */
+    @keyframes pdot { 0%,100%{box-shadow:0 0 0 0 rgba(57,255,20,.7)} 50%{box-shadow:0 0 0 10px rgba(57,255,20,0)} }
+    .pdot { display:inline-block; width:10px; height:10px; background:var(--green); border-radius:50%; animation:pdot 1.4s infinite; vertical-align:middle; margin-right:6px; }
+
+    /* ── STICKER ── */
+    .sticker { border:2px solid; padding:5px 12px; font-size:1rem; letter-spacing:0.1em; font-family:'VT323',monospace; }
+
+    /* ── SPIN ICON ── */
+    @keyframes spin360 { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+    .spin { display:inline-block; animation:spin360 3s linear infinite; }
+
+    /* ── CORNER DECORATIONS ── */
+    .corner { position:fixed; font-size:1.4rem; z-index:4; pointer-events:none; }
+    @keyframes cornerspin { from{transform:rotate(0) scale(1)} 50%{transform:rotate(180deg) scale(1.2)} to{transform:rotate(360deg) scale(1)} }
+    .corner { animation:cornerspin 6s linear infinite; }
+    .c1{top:16px;left:16px;} .c2{top:16px;right:16px;} .c3{bottom:16px;left:16px;} .c4{bottom:16px;right:16px;}
+
+    /* ── REVEAL ── */
+    @keyframes popIn { from{opacity:0;transform:scale(0.4) rotate(-8deg)} 70%{transform:scale(1.06) rotate(1deg)} to{opacity:1;transform:scale(1) rotate(0)} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(35px)} to{opacity:1;transform:translateY(0)} }
+    .pop  { opacity:0; animation:popIn  0.8s cubic-bezier(.34,1.56,.64,1) forwards; }
+    .slid { opacity:0; animation:slideUp 0.7s ease forwards; }
+    .d1{animation-delay:.1s} .d2{animation-delay:.3s} .d3{animation-delay:.5s}
+    .d4{animation-delay:.7s} .d5{animation-delay:.9s} .d6{animation-delay:1.1s}
+    .d7{animation-delay:1.3s} .d8{animation-delay:1.5s}
+
+    /* ── MARQUEE ── */
+    .marquee-wrap { overflow:hidden; white-space:nowrap; }
+    @keyframes marquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+    .marquee-inner { display:inline-block; animation:marquee 10s linear infinite; color:var(--purple); font-size:1.1rem; letter-spacing:0.15em; font-family:'VT323',monospace; }
+
+    /* ── EMOJI ANIMATIONS ── */
+    @keyframes eBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+    @keyframes ePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+    @keyframes eSwing{0%,100%{transform:rotate(-12deg)}50%{transform:rotate(12deg)}}
+    @keyframes eFloat{0%,100%{transform:translateY(0) rotate(0deg)}33%{transform:translateY(-9px) rotate(8deg)}66%{transform:translateY(-4px) rotate(-5deg)}}
+    .ea{display:inline-block;}
+    .e-bounce{animation:eBounce 1.4s ease-in-out infinite;}
+    .e-bounce2{animation:eBounce 1.7s ease-in-out infinite .25s;}
+    .e-bounce3{animation:eBounce 2s ease-in-out infinite .5s;}
+    .e-spin{animation:spin360 3s linear infinite;}
+    .e-pulse{animation:ePulse 1.1s ease-in-out infinite;}
+    .e-swing{animation:eSwing 1.6s ease-in-out infinite;}
+    .e-float{animation:eFloat 3s ease-in-out infinite;}
+  </style>
+</head>
+<body class="flex items-center justify-center">
+
+  <!-- canvas layers -->
+  <canvas id="c-stars"></canvas>
+  <canvas id="c-grid"></canvas>
+  <canvas id="c-particles"></canvas>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <!-- cursors -->
+  <div id="cur"></div>
+  <div id="curd"></div>
+
+
+
+
+
+  <!-- MAIN CONTENT -->
+  <div class="relative z-10 max-w-2xl w-full mx-8">
+
+    <!-- top bar -->
+    <div class="slid d1 flex justify-between items-center mb-4">
+      <div class="sticker border-[#00cfff] text-[#00cfff]">[ SYS::ONLINE ]</div>
+      <div class="flex gap-4 text-2xl">
+        <span class="fe1">🌐</span><span class="fe2">💻</span><span class="fe3">🔗</span>
+      </div>
+      <div class="sticker border-[#39ff14] text-[#39ff14]"><span class="pdot"></span>CONNECTED</div>
+    </div>
+
+    <!-- neon line -->
+    <div class="neon-line slid d2 mb-5"></div>
+
+    <!-- badge -->
+    <div class="slid d2 mb-3">
+      <span class="badge"><span class="ea e-pulse">⚡</span> GRUPO 3 — REDES <span class="ea e-pulse">⚡</span></span>
+    </div>
+
+    <!-- BIG TITLE -->
+    <h1 class="glitch pop d3" style="font-size:clamp(4.5rem,13vw,10rem)">GRUPO 3</h1>
+    <h1 class="flicker pop d4 mb-5" style="font-size:clamp(3rem,9vw,7rem)">— REDES — <span class="ea e-spin">🌐</span></h1>
+
+    <!-- neon line -->
+    <div class="neon-line slid d5 mb-5"></div>
+
+    <!-- terminal block -->
+    <div class="slid d6 mb-4">
+      <p style="color:var(--green);font-size:1.3rem;font-family:'VT323',monospace">&gt; ping 192.168.3.0</p>
+      <p style="color:var(--yellow);font-size:1.3rem;font-family:'VT323',monospace">Reply from 192.168.3.0: bytes=32 time=1ms TTL=64 ✓</p>
+    </div>
+
+    <!-- marquee -->
+    <div class="marquee-wrap slid d7 mb-4">
+      <div class="marquee-inner">
+        ★ ping ★ ★ 192.168.3.0 ★ ping ★ 192.168.3.0 ★ ping ★ 192.168.3.0 ★ ping ★ 192.168.3.0 ★ ping ★ 192.168.3.0 ★&nbsp;
+      </div>
+    </div>
+
+    <!-- bottom -->
+    <div class="slid d8 flex justify-between items-center">
+      <p style="color:var(--purple);font-size:1.1rem;letter-spacing:0.12em;font-family:'VT323',monospace;">
+        ★ 10/10 ★ <span class="rainbow">:P</span> ★
+      </p>
+      <span class="spin text-2xl">⚙️</span>
+    </div>
+
+  </div>
+
+  <script>
+  const TAU=Math.PI*2;
+  let W=window.innerWidth,H=window.innerHeight;
+
+  /* CURSOR */
+  const cur=document.getElementById('cur'),curd=document.getElementById('curd');
+  let mx=0,my=0,rx=0,ry=0;
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+  (function lp(){
+    rx+=(mx-rx)*.18;ry+=(my-ry)*.18;
+    cur.style.left=rx+'px';cur.style.top=ry+'px';
+    curd.style.left=mx+'px';curd.style.top=my+'px';
+    requestAnimationFrame(lp);
+  })();
+
+  /* click burst */
+  document.addEventListener('click',e=>{
+    const emojis=['🌐','⚡','🔗','💻','🚀','📡','🔌','⚙️'];
+    const colors=['#ff2d78','#39ff14','#00cfff','#ffe600','#7b2fff'];
+    for(let i=0;i<8;i++){
+      const p=document.createElement('div');
+      const c=colors[i%colors.length];
+      const a=(i/8)*TAU;
+      const r=50+Math.random()*40;
+      p.style.cssText=`position:fixed;left:${e.clientX}px;top:${e.clientY}px;
+        font-size:${1+Math.random()*.8}rem;pointer-events:none;z-index:9998;
+        transform:translate(-50%,-50%);
+        transition:all .7s cubic-bezier(.2,1,.3,1);
+        text-shadow:0 0 8px ${c};`;
+      p.textContent=emojis[i%emojis.length];
+      document.body.appendChild(p);
+      requestAnimationFrame(()=>{
+        p.style.left=(e.clientX+Math.cos(a)*r)+'px';
+        p.style.top=(e.clientY+Math.sin(a)*r)+'px';
+        p.style.opacity='0';p.style.transform='translate(-50%,-50%) scale(0)';
+      });
+      setTimeout(()=>p.remove(),800);
+    }
+  });
+
+  /* STARFIELD */
+  const sc=document.getElementById('c-stars');
+  sc.width=W;sc.height=H;
+  const sx=sc.getContext('2d');
+  const stars=Array.from({length:120},()=>({
+    x:Math.random()*W,y:Math.random()*H,
+    r:Math.random()*1.5+.3,
+    o:Math.random(),
+    s:Math.random()*.05+.01,
+    ph:Math.random()*TAU
+  }));
+  let st=0;
+  function drawStars(){
+    st+=.008;
+    sx.clearRect(0,0,W,H);
+    stars.forEach(s=>{
+      s.o+=((Math.random()-.5)*.05);
+      s.o=Math.max(.05,Math.min(.9,s.o));
+      sx.beginPath();sx.arc(s.x,s.y,s.r,0,TAU);
+      sx.fillStyle=`rgba(255,255,255,${s.o})`;sx.fill();
+    });
+    requestAnimationFrame(drawStars);
+  }
+  drawStars();
+
+  /* PERSPECTIVE GRID */
+  const gc=document.getElementById('c-grid');
+  gc.width=W;gc.height=H;
+  const gx=gc.getContext('2d');
+  let gOff=0;
+  function drawGrid(){
+    gOff=(gOff+.5)%60;
+    gx.clearRect(0,0,W,H);
+    gx.strokeStyle='rgba(0,207,255,0.08)';gx.lineWidth=1;
+    // horizontal lines covering full screen
+    for(let i=-10;i<30;i++){
+      const y=i*60+gOff;
+      gx.globalAlpha=.2;
+      gx.beginPath();gx.moveTo(0,y);gx.lineTo(W,y);gx.stroke();
+    }
+    // vertical lines evenly spaced
+    for(let i=0;i<=16;i++){
+      const x=(W/16)*i;
+      gx.globalAlpha=.12;
+      gx.beginPath();gx.moveTo(x,0);gx.lineTo(x,H);gx.stroke();
+    }
+    gx.globalAlpha=1;
+    requestAnimationFrame(drawGrid);
+  }
+  drawGrid();
+
+  /* PARTICLE NETWORK */
+  const pc=document.getElementById('c-particles');
+  pc.width=W;pc.height=H;
+  const px=pc.getContext('2d');
+  const COLS=['#39ff14','#ff2d78','#00cfff','#ffe600','#7b2fff'];
+  const pts=Array.from({length:60},()=>({
+    x:Math.random()*W,y:Math.random()*H,
+    vx:(Math.random()-.5)*.6,vy:(Math.random()-.5)*.6,
+    r:Math.random()*2+.5,
+    c:COLS[Math.floor(Math.random()*COLS.length)],
+    o:Math.random()*.5+.2
+  }));
+  function drawParticles(){
+    px.clearRect(0,0,W,H);
+    pts.forEach((a,i)=>{
+      pts.slice(i+1).forEach(b=>{
+        const d=Math.hypot(a.x-b.x,a.y-b.y);
+        if(d<110){
+          px.beginPath();
+          px.strokeStyle=`rgba(0,207,255,${.15*(1-d/110)})`;
+          px.lineWidth=.8;px.moveTo(a.x,a.y);px.lineTo(b.x,b.y);px.stroke();
+        }
+      });
+    });
+    pts.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0||p.x>W)p.vx*=-1;
+      if(p.y<0||p.y>H)p.vy*=-1;
+      px.beginPath();px.arc(p.x,p.y,p.r,0,TAU);
+      px.fillStyle=p.c;px.globalAlpha=p.o;px.fill();px.globalAlpha=1;
+    });
+    requestAnimationFrame(drawParticles);
+  }
+  drawParticles();
+
+  window.addEventListener('resize',()=>{
+    W=window.innerWidth; H=window.innerHeight;
+    sc.width=gc.width=pc.width=W;
+    sc.height=gc.height=pc.height=H;
+  });
+  </script>
+</body>
+</html>
