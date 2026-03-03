@@ -100,19 +100,19 @@ write_forward_zone() {
         echo "@       IN  NS      dns.${domain}."
         echo ""
         echo "; Registros A"
-        [[ -n "$ip_dns" ]] && echo "dns     IN  A       ${ip_dns}"
-        [[ -n "$ip_web" ]] && echo "web     IN  A       ${ip_web}"
-        [[ -n "$ip_ftp" ]] && echo "ftp     IN  A       ${ip_ftp}"
+        if [[ -n "$ip_dns" ]]; then echo "dns     IN  A       ${ip_dns}"; fi
+        if [[ -n "$ip_web" ]]; then echo "web     IN  A       ${ip_web}"; fi
+        if [[ -n "$ip_ftp" ]]; then echo "ftp     IN  A       ${ip_ftp}"; fi
     } > "$file"
 }
 
 write_reverse_zone() {
     local domain=$1 network=$2 ip_dns=$3 ip_web=$4 ip_ftp=$5
     local file="$ZONE_DIR/db.${network}"
-    local last_dns last_web last_ftp
-    [[ -n "$ip_dns" ]] && last_dns=$(echo "$ip_dns" | cut -d'.' -f4)
-    [[ -n "$ip_web" ]] && last_web=$(echo "$ip_web" | cut -d'.' -f4)
-    [[ -n "$ip_ftp" ]] && last_ftp=$(echo "$ip_ftp" | cut -d'.' -f4)
+    local last_dns="" last_web="" last_ftp=""
+    if [[ -n "$ip_dns" ]]; then last_dns=$(echo "$ip_dns" | cut -d'.' -f4); fi
+    if [[ -n "$ip_web" ]]; then last_web=$(echo "$ip_web" | cut -d'.' -f4); fi
+    if [[ -n "$ip_ftp" ]]; then last_ftp=$(echo "$ip_ftp" | cut -d'.' -f4); fi
     local reverse
     reverse=$(echo "$network" | awk -F'.' '{print $3"."$2"."$1}').in-addr.arpa
     {
@@ -131,9 +131,9 @@ write_reverse_zone() {
         echo "@       IN  NS      dns.${domain}."
         echo ""
         echo "; Registros PTR"
-        [[ -n "$last_dns" ]] && echo "${last_dns}     IN  PTR     dns.${domain}."
-        [[ -n "$last_web" ]] && echo "${last_web}     IN  PTR     web.${domain}."
-        [[ -n "$last_ftp" ]] && echo "${last_ftp}     IN  PTR     ftp.${domain}."
+        if [[ -n "$last_dns" ]]; then echo "${last_dns}     IN  PTR     dns.${domain}."; fi
+        if [[ -n "$last_web" ]]; then echo "${last_web}     IN  PTR     web.${domain}."; fi
+        if [[ -n "$last_ftp" ]]; then echo "${last_ftp}     IN  PTR     ftp.${domain}."; fi
     } > "$file"
 }
 
