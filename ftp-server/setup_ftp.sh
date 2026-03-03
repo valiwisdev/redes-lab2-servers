@@ -6,6 +6,7 @@ set -e
 
 # 1. Get host IP
 IP=$(ip -o -4 route show to default | awk '{print $5}' | head -1 | xargs -I{} ip -o -4 addr show {} | awk '{print $4}' | cut -d'/' -f1)
+
 echo "============================================"
 echo "  ProFTPD Docker Setup"
 echo "============================================"
@@ -19,8 +20,15 @@ FTPUSER="${INPUT_USER:-ftpuser}"
 read -rp "Enter FTP password   [default: ftppassword]: " INPUT_PASS
 FTPPASS="${INPUT_PASS:-ftppassword}"
 
-read -rp "Enter server IP      [default: $IP]: " INPUT_IP
-SERVER_IP="${INPUT_IP:-$IP}"
+# PASV address is required - no default skipping allowed
+while true; do
+  read -rp "Enter PASV/server IP [detected: $IP]: " INPUT_IP
+  SERVER_IP="${INPUT_IP:-$IP}"
+  if [[ -n "$SERVER_IP" ]]; then
+    break
+  fi
+  echo "  ERROR: IP is required for passive mode to work." >&2
+done
 
 # 3. Create ftp_data folder
 echo ""
