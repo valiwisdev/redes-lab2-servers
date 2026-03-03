@@ -33,6 +33,7 @@ done
 echo ""
 echo "  Creating folders..."
 mkdir -p ftp_data
+  chmod 777 ftp_data
 mkdir -p proftpd
 
 # 4. Create Dockerfile
