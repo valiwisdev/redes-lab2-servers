@@ -36,7 +36,18 @@ redes-lab2-servers/
 
 ## ⚙️ Antes de empezar
 
-### Instalar Docker (requerido para nginx y rtmp)
+### Dar permisos a los scripts
+```bash
+chmod +x set_static_ip.sh
+chmod +x install_docker.sh
+chmod +x dns-server/setup_dns.sh
+chmod +x ftp-server/setup_ftp.sh
+chmod +x nginx-server/gen_certs.sh
+```
+
+---
+
+### Instalar Docker (requerido para ftp, nginx y rtmp)
 ```bash
 sudo bash install_docker.sh
 ```
@@ -79,10 +90,17 @@ sudo bash set_static_ip.sh
 
 ### 🔹 FTP Server — `ftp-server/`
 
-Servidor FTP para transferencia de archivos dentro de la red del laboratorio.
+Servidor FTP para transferencia de archivos dentro de la red del laboratorio, desplegado en **Docker**.
 
+#### Levantar el servidor
 ```bash
 sudo bash ftp-server/setup_ftp.sh
+```
+
+#### Verificar
+```bash
+docker ps | grep ftp
+ftp ftp.labredesXY.com
 ```
 
 #### IP estática
