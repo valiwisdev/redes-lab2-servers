@@ -211,9 +211,9 @@ sudo systemctl restart systemd-resolved
 
 | Servicio | Hostname | IP |
 |---|---|---|
-| DNS | `dns.labredesXY.com` | `192.168.X.X` |
-| Web | `web.labredesXY.com` | `192.168.X.X` |
-| FTP | `ftp.labredesXY.com` | `192.168.X.X` |
+| DNS | `dns.labredesXY.com` | `X.X.X.X` |
+| Web | `web.labredesXY.com` | `X.X.X.X` |
+| FTP | `ftp.labredesXY.com` | `X.X.X.X` |
 
 > Reemplaza `XY` con tu número de grupo y sección, y completa las IPs reales.
 
