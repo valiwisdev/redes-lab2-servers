@@ -36,7 +36,7 @@ redes-lab2-servers/
 
 ## ⚙️ Antes de empezar
 
-### Dar permisos a los scripts
+### 1. Dar permisos a los scripts
 ```bash
 chmod +x set_static_ip.sh
 chmod +x install_docker.sh
@@ -45,9 +45,7 @@ chmod +x ftp-server/setup_ftp.sh
 chmod +x nginx-server/gen_certs.sh
 ```
 
----
-
-### Instalar Docker (requerido para ftp, nginx y rtmp)
+### 2. Instalar Docker (requerido para ftp, nginx y rtmp)
 ```bash
 sudo bash install_docker.sh
 ```
@@ -56,34 +54,7 @@ sudo bash install_docker.sh
 
 ## 🔵 Servicios
 
-### 🔹 DNS Server — `dns-server/`
-
-Servidor de nombres basado en **BIND9** con zonas directa e inversa para `labredesXY.com`.
-
-Registros configurados: `dns`, `web` y `ftp`.
-
-#### Instalar BIND9 manualmente
-```bash
-sudo apt-get update
-sudo apt-get install -y bind9 bind9utils bind9-doc dnsutils
-```
-
-#### Verificar instalación
-```bash
-named -v
-systemctl status named
-```
-
-```bash
-sudo bash dns-server/setup_dns.sh              # Instalación guiada interactiva
-sudo bash dns-server/setup_dns.sh --add        # Agregar o actualizar un registro
-sudo bash dns-server/setup_dns.sh --list       # Ver registros actuales
-```
-
-#### IP estática
-```bash
-sudo bash set_static_ip.sh
-```
+> **Orden recomendado:** configura primero FTP, Web y RTMP. El DNS se configura de último para que al hacer las pruebas con `nslookup` todos los servicios ya estén levantados.
 
 ---
 
@@ -94,12 +65,6 @@ Servidor FTP para transferencia de archivos dentro de la red del laboratorio, de
 #### Levantar el servidor
 ```bash
 sudo bash ftp-server/setup_ftp.sh
-```
-
-#### Verificar
-```bash
-docker ps | grep ftp
-ftp ftp.labredesXY.com
 ```
 
 #### IP estática
@@ -122,12 +87,6 @@ bash nginx-server/gen_certs.sh
 ```bash
 cd nginx-server
 docker compose up -d
-```
-
-#### Verificar
-```bash
-curl http://web.labredesXY.com
-curl -k https://web.labredesXY.com
 ```
 
 #### IP estática
@@ -167,9 +126,41 @@ sudo bash set_static_ip.sh
 
 ---
 
+### 🔹 DNS Server — `dns-server/`
+
+Servidor de nombres basado en **BIND9** con zonas directa e inversa para `labredesXY.com`.
+
+Registros configurados: `dns`, `web` y `ftp`.
+
+#### Instalar BIND9 manualmente
+```bash
+sudo apt-get update
+sudo apt-get install -y bind9 bind9utils bind9-doc dnsutils
+```
+
+#### Verificar instalación
+```bash
+named -v
+systemctl status named
+```
+
+#### Configurar con el script
+```bash
+sudo bash dns-server/setup_dns.sh              # Instalación guiada interactiva
+sudo bash dns-server/setup_dns.sh --add        # Agregar o actualizar un registro
+sudo bash dns-server/setup_dns.sh --list       # Ver registros actuales
+```
+
+#### IP estática
+```bash
+sudo bash set_static_ip.sh
+```
+
+---
+
 ## 💻 Configuración del cliente DNS en Omarchy Linux
 
-Después de levantar el servidor DNS, configura las demás VMs para que lo usen.
+Una vez que todos los servicios están levantados, configura las VMs cliente para que usen el servidor DNS.
 
 ### Paso 1 — Editar configuración de systemd-resolved
 
@@ -201,7 +192,10 @@ sudo ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 sudo pacman -S bind-tools
 ```
 
-### Paso 3 — Probar resolución
+### Paso 3 — Verificar todos los servicios con nslookup
+
+Con el DNS ya configurado en el cliente, prueba que todos los servicios resuelven correctamente:
+
 ```bash
 # Resolución directa
 nslookup dns.labredesXY.com 192.168.74.147
