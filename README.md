@@ -1,6 +1,6 @@
 # 🌐 Redes Lab 2 — Servidores
 
-Repositorio del laboratorio 2 para **Infraestructura de Comunicaciones**.
+Repositorio del laboratorio 2 para **REDES Y SERVICIOS DE COMUNICACIONES**.
 Contiene los scripts y configuraciones para los servicios DNS, FTP, Web (Nginx) y RTMP.
 
 ---
@@ -290,5 +290,3 @@ sudo systemctl restart systemd-resolved
 > Reemplaza `XY` con tu número de grupo y sección, y completa las IPs reales.
 
 ---
-
-**Infraestructura de Comunicaciones — Universidad de los Andes**
