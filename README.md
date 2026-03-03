@@ -78,7 +78,6 @@ systemctl status named
 sudo bash dns-server/setup_dns.sh              # Instalación guiada interactiva
 sudo bash dns-server/setup_dns.sh --add        # Agregar o actualizar un registro
 sudo bash dns-server/setup_dns.sh --list       # Ver registros actuales
-sudo bash dns-server/setup_dns.sh --status     # Estado del servicio y prueba de resolución
 ```
 
 #### IP estática
