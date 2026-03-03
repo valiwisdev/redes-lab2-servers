@@ -295,12 +295,7 @@ cmd_setup() {
     read -rp "  Continuar con la instalacion? (s/N): " CONFIRM
     [[ ! "$CONFIRM" =~ ^[sS]$ ]] && { warn "Instalacion cancelada."; exit 0; }
 
-    header "1/6  Instalando BIND9"
-    apt-get update -q
-    apt-get install -y bind9 bind9utils bind9-doc dnsutils
-    ok "BIND9 instalado."
-
-    header "2/6  Forzando solo IPv4"
+    header "1/5  Forzando solo IPv4"
     if grep -q '^OPTIONS=' /etc/default/named 2>/dev/null; then
         sed -i 's/^OPTIONS=.*/OPTIONS="-u bind -4"/' /etc/default/named
     else
@@ -308,15 +303,15 @@ cmd_setup() {
     fi
     ok "IPv6 deshabilitado en BIND9."
 
-    header "3/6  Creando zona directa"
+    header "2/5  Creando zona directa"
     write_forward_zone "$DOMAIN" "$IP_DNS" "$IP_WEB" "$IP_FTP"
     ok "Archivo: $ZONE_DIR/$ZONE_FILE_FWD"
 
-    header "4/6  Creando zona inversa"
+    header "3/5  Creando zona inversa"
     write_reverse_zone "$DOMAIN" "$NETWORK" "$IP_DNS" "$IP_WEB" "$IP_FTP"
     ok "Archivo: $ZONE_DIR/$ZONE_FILE_REV"
 
-    header "5/6  Registrando zonas en named.conf"
+    header "4/5  Registrando zonas en named.conf"
     sed -i "/zone \"${DOMAIN}\"/,/^};/d" /etc/bind/named.conf.local 2>/dev/null || true
     sed -i "/zone \"${REVERSE_ZONE}\"/,/^};/d" /etc/bind/named.conf.local 2>/dev/null || true
     {
@@ -345,7 +340,7 @@ cmd_setup() {
     } > /etc/bind/named.conf.options
     ok "named.conf actualizado."
 
-    header "6/6  Validando con named-checkzone"
+    header "5/5  Validando con named-checkzone"
     named-checkzone "$DOMAIN" "$ZONE_DIR/$ZONE_FILE_FWD"
     named-checkzone "$REVERSE_ZONE" "$ZONE_DIR/$ZONE_FILE_REV"
     named-checkconf
