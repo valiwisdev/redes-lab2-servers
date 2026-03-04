@@ -67,21 +67,7 @@ El menú muestra el estado de cada servicio en tiempo real (`●` activo / `○`
 
 ## 🔵 Servicios
 
-### 🔹 1 — Docker
-
-Instala Docker CE + el plugin Compose desde el repositorio oficial. Requerido antes de configurar FTP, Web y RTMP.
-
-Desde el instalador → opción **`1`**, o manualmente:
-
-```bash
-sudo bash extras/install_docker.sh
-```
-
-> Después de instalar, cierra sesión y vuelve a entrar, o ejecuta `newgrp docker`. Verifica con `docker run hello-world`.
-
----
-
-### 🔹 2 — FTP Server
+### 🔹 1 — FTP Server
 
 **ProFTPD** en Docker. Opera en modo pasivo (puertos `30000–30009`) con el canal de control en el `21`.
 
@@ -96,7 +82,7 @@ Para ver logs, subopción **`b`**. Para configurar IP estática, subopción **`c
 
 ---
 
-### 🔹 3 — Web Server
+### 🔹 2 — Web Server
 
 **Nginx** (`nginx:alpine`) sirviendo una página HTML en HTTP (puerto `80`) y HTTPS (puerto `443`) con certificado SSL autofirmado generado con OpenSSL.
 
@@ -108,7 +94,7 @@ Para ver logs, subopción **`b`**. Para configurar IP estática, subopción **`c
 
 ---
 
-### 🔹 4 — RTMP Server
+### 🔹 3 — RTMP Server
 
 Dos contenedores Docker:
 - **`rtmp-nginx`** — Nginx con módulo RTMP, escucha en el puerto `1935` (stream) y `80` (health check).
@@ -126,7 +112,7 @@ Para ver logs, subopción **`b`**. Para configurar IP estática, subopción **`c
 
 ---
 
-### 🔹 5 — DNS Server
+### 🔹 4 — DNS Server
 
 **BIND9** instalado directamente en la VM (sin Docker). Gestiona el dominio `labredesXY.com` con zona directa (registros A) y zona inversa (registros PTR).
 
