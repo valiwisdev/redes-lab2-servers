@@ -1,4 +1,4 @@
-# 📋 Preguntas y respuestas sobre los servicios
+# 📋 FAQ 
 
 ---
 
