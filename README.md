@@ -11,6 +11,9 @@ Contiene los scripts y configuraciones para los servicios DNS, FTP, Web (Nginx) 
 redes-lab2-servers/
 ├── dns-server/
 │   └── setup_dns.sh
+├── extras/
+│   ├── install_docker.sh
+│   └── set_static_ip.sh
 ├── ftp-server/
 │   └── setup_ftp.sh
 ├── nginx-server/
@@ -28,176 +31,123 @@ redes-lab2-servers/
 │   └── nginx/
 │       ├── Dockerfile
 │       └── nginx.conf
-├── install_docker.sh
-└── set_static_ip.sh
+└── installer.sh
 ```
 
 ---
 
-## ⚙️ Antes de empezar
+## 🚀 Instalación — usando el instalador interactivo
 
-### 1. Dar permisos a los scripts
-```bash
-chmod +x set_static_ip.sh
-chmod +x install_docker.sh
-chmod +x dns-server/setup_dns.sh
-chmod +x ftp-server/setup_ftp.sh
-chmod +x nginx-server/gen_certs.sh
-```
-
-### 2. Instalar Docker (requerido para FTP, Nginx y RTMP)
-
-Docker se instala usando el script `install_docker.sh`, que agrega el repositorio oficial de Docker, instala `docker-ce`, `docker-ce-cli`, `containerd.io` y los plugins de `buildx` y `compose`, y agrega el usuario actual al grupo `docker`.
+El script `installer.sh` centraliza la configuración de todos los servicios en un único menú interactivo. Es la forma recomendada de configurar el laboratorio.
 
 ```bash
-sudo bash install_docker.sh
+sudo bash installer.sh
 ```
 
-> Después de instalar, cierra sesión y vuelve a entrar, o ejecuta `newgrp docker` para que los cambios de grupo tomen efecto. Verifica con `docker run hello-world`.
+El menú muestra el estado de cada servicio en tiempo real (`●` activo / `○` inactivo) y permite configurar cada uno sin necesidad de navegar manualmente por los directorios.
+
+```
+  Select a service to configure:
+
+  ────────────────────────────────────────────────
+   1)  ●  Docker                   required for 2, 3, 4
+  ────────────────────────────────────────────────
+   2)  ○  FTP Server               ProFTPD · ports 21, 30000-30009
+   3)  ○  Web Server               Nginx · ports 80, 443 (SSL)
+   4)  ○  RTMP Server              Nginx-RTMP + ffmpeg · 80, 1935
+  ────────────────────────────────────────────────
+   5)  ○  DNS Server               BIND9 · no Docker needed
+  ────────────────────────────────────────────────
+   q)  Quit
+```
+
+> **Orden recomendado:** configura primero FTP, Web y RTMP con su IP estática. El DNS se configura de último. Las verificaciones con `nslookup`, `curl` y `ftp` se hacen al final, una vez que el DNS esté activo.
 
 ---
 
 ## 🔵 Servicios
 
-> **Orden recomendado:** configura primero FTP, Web y RTMP con su IP estática. El DNS se configura de último. Las verificaciones con `nslookup`, `curl` y `ftp` se hacen al final, una vez que el DNS esté activo y configurado en el cliente.
+### 🔹 1 — Docker
+
+Instala Docker CE + el plugin Compose desde el repositorio oficial. Requerido antes de configurar FTP, Web y RTMP.
+
+Desde el instalador → opción **`1`**, o manualmente:
+
+```bash
+sudo bash extras/install_docker.sh
+```
+
+> Después de instalar, cierra sesión y vuelve a entrar, o ejecuta `newgrp docker`. Verifica con `docker run hello-world`.
 
 ---
 
-### 🔹 FTP Server — `ftp-server/`
+### 🔹 2 — FTP Server
 
-**FTP (File Transfer Protocol)** permite transferir archivos entre máquinas de la red. Este servidor usa **ProFTPD** corriendo en un contenedor **Docker**. El script `setup_ftp.sh` genera automáticamente el `Dockerfile`, la configuración de ProFTPD y el `docker-compose.yml` según los valores que ingreses, y levanta el contenedor.
+**ProFTPD** en Docker. Opera en modo pasivo (puertos `30000–30009`) con el canal de control en el `21`.
 
-El servidor opera en **modo pasivo** (puertos `30000–30009`) con el puerto de control en `21`.
+Desde el instalador → opción **`2`**, subopción **`a`** (configura y levanta el contenedor).
 
-#### Ejecutar el script
-```bash
-sudo bash ftp-server/setup_ftp.sh
-```
-
-El script te pedirá:
+El instalador pedirá:
 - **FTP username** (default: `ftpuser`)
 - **FTP password** (default: `ftppassword`)
 - **IP del servidor** para el modo pasivo (se detecta automáticamente)
 
-#### Ver logs
-```bash
-docker compose logs proftpd
-```
-
-#### IP estática
-```bash
-sudo bash set_static_ip.sh
-```
-
-El script detecta automáticamente la interfaz de red y la IP actual por DHCP, y te permite confirmar o cambiar los valores antes de aplicarlos via `netplan`.
+Para ver logs, subopción **`b`**. Para configurar IP estática, subopción **`c`**.
 
 ---
 
-### 🔹 Web Server — `nginx-server/`
+### 🔹 3 — Web Server
 
-**Nginx** es un servidor web de alto rendimiento. En este laboratorio sirve una página HTML en HTTP (puerto `80`) y HTTPS (puerto `443`) con un certificado SSL autofirmado generado con OpenSSL. Corre en Docker usando la imagen `nginx:alpine`.
+**Nginx** (`nginx:alpine`) sirviendo una página HTML en HTTP (puerto `80`) y HTTPS (puerto `443`) con certificado SSL autofirmado generado con OpenSSL.
 
-La configuración en `nginx.conf` define dos bloques `server`: uno para HTTP y otro para HTTPS con TLS 1.2/1.3. La página servida está en `html/index.html`.
+Desde el instalador → opción **`3`**, subopción **`a`** (genera el certificado y levanta el contenedor).
 
-> **Nota:** Los certificados están en `.gitignore` (`certs/`, `*.key`, `*.crt`, `*.pem`) — hay que generarlos antes de levantar el servidor.
+> Los certificados están en `.gitignore` — el instalador los genera automáticamente si no existen. Se puede regenerar el certificado si la IP del servidor cambió.
 
-#### Paso 1 — Generar el certificado SSL
-
-El script `gen_certs.sh` detecta automáticamente la IP de la VM y genera un certificado autofirmado RSA 2048 válido por 365 días en `certs/server.key` y `certs/server.crt`.
-
-```bash
-bash nginx-server/gen_certs.sh
-```
-
-#### Paso 2 — Levantar el servidor
-```bash
-cd nginx-server
-docker compose up -d
-```
-
-#### IP estática
-```bash
-sudo bash set_static_ip.sh
-```
+Para ver logs, subopción **`b`**. Para configurar IP estática, subopción **`c`**.
 
 ---
 
-### 🔹 RTMP Server — `rtmp-server/`
+### 🔹 4 — RTMP Server
 
-**RTMP (Real-Time Messaging Protocol)** es un protocolo para transmisión de video y audio en tiempo real. Este servidor usa dos contenedores Docker:
+Dos contenedores Docker:
+- **`rtmp-nginx`** — Nginx con módulo RTMP, escucha en el puerto `1935` (stream) y `80` (health check).
+- **`ffmpeg-publisher`** — Toma el video de `rtmp-server/videos/` y lo publica en loop al servidor.
 
-- **`rtmp-nginx`**: Nginx con el módulo RTMP, escucha en el puerto `1935` (stream) y `80` (HTTP health check).
-- **`ffmpeg-publisher`**: Toma el archivo de video de `videos/`, lo codifica con `libx264`/`aac` y lo publica en loop al servidor RTMP automáticamente.
+Desde el instalador → opción **`4`**, subopción **`a`** (configura stream key, video y levanta los contenedores).
 
-#### Paso 1 — Configurar el archivo `.env`
+El instalador pedirá:
+- **Stream key** (default: `1`)
+- **Video file** — nombre del archivo en `rtmp-server/videos/` (default: `IVE.mp4`)
 
-```dotenv
-STREAM_KEY=1
-VIDEO_FILE=IVE.mp4
-```
+> Coloca tu archivo de video en `rtmp-server/videos/` antes de iniciar.
 
-- `STREAM_KEY`: clave del stream (se usa en la URL de reproducción).
-- `VIDEO_FILE`: nombre del archivo de video en `rtmp-server/videos/`.
-
-> Coloca tu archivo de video en `rtmp-server/videos/` y actualiza `VIDEO_FILE` con su nombre.
-
-#### Paso 2 — Levantar el servidor
-```bash
-cd rtmp-server
-docker compose up -d
-```
-
-#### Ver logs
-```bash
-docker compose logs rtmp
-docker compose logs publisher
-```
-
-#### IP estática
-```bash
-sudo bash set_static_ip.sh
-```
+Para ver logs, subopción **`b`**. Para configurar IP estática, subopción **`c`**.
 
 ---
 
-### 🔹 DNS Server — `dns-server/`
+### 🔹 5 — DNS Server
 
-**DNS (Domain Name System)** traduce nombres de dominio en direcciones IP y viceversa. En este laboratorio se usa **BIND9** para gestionar el dominio `labredesXY.com` con dos zonas:
+**BIND9** instalado directamente en la VM (sin Docker). Gestiona el dominio `labredesXY.com` con zona directa (registros A) y zona inversa (registros PTR).
 
-- **Zona directa**: resuelve `dns.labredesXY.com`, `web.labredesXY.com` y `ftp.labredesXY.com` a sus IPs.
-- **Zona inversa**: resuelve IPs de vuelta a sus nombres (registros PTR).
+Desde el instalador → opción **`5`**:
 
-El script `setup_dns.sh` es interactivo: detecta automáticamente la IP del servidor DNS, permite omitir registros que aún no estén disponibles y guardar el estado para agregarlos después.
+| Subopción | Acción |
+|---|---|
+| `a` | Instala BIND9 si no está instalado |
+| `b` | Configuración guiada completa (primera vez) |
+| `c` | Agregar o actualizar un registro (`--add`) |
+| `d` | Ver registros actuales (`--list`) |
+| `e` | Configurar IP estática |
 
-#### Instalar BIND9 manualmente
-```bash
-sudo apt-get update
-sudo apt-get install -y bind9 bind9utils bind9-doc dnsutils
-```
+El setup pedirá número de grupo, sección, IP del servidor DNS (se detecta automáticamente), y opcionalmente las IPs de Web y FTP (se pueden agregar después con la subopción `c`).
 
-#### Verificar instalación
-```bash
-named -v
-systemctl status named
-```
-
-#### Configurar con el script
+También se puede ejecutar directamente:
 
 ```bash
 sudo bash dns-server/setup_dns.sh        # Instalación guiada interactiva
-sudo bash dns-server/setup_dns.sh --add  # Agregar o actualizar un registro (dns/web/ftp)
+sudo bash dns-server/setup_dns.sh --add  # Agregar o actualizar un registro
 sudo bash dns-server/setup_dns.sh --list # Ver registros actuales
-```
-
-El script te pedirá:
-- **Número de grupo** y **sección** para construir el dominio (`labredesXY.com`)
-- **IP del servidor DNS** (se detecta automáticamente, puedes confirmar o cambiar)
-- **IP del servidor Web** (opcional, se puede agregar después con `--add`)
-- **IP del servidor FTP** (opcional, se puede agregar después con `--add`)
-
-#### IP estática
-```bash
-sudo bash set_static_ip.sh
 ```
 
 ---
@@ -226,9 +176,10 @@ sudo systemctl restart systemd-resolved
 sudo ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
 ```
 
-> **Nota:** `resolv.conf` mostrará `nameserver 127.0.0.53` — es normal, systemd actúa como intermediario. Verifica con `resolvectl status` para confirmar que apunta a tu IP del lab.
+> **Nota:** `resolv.conf` mostrará `nameserver 127.0.0.53` — es normal. Verifica con `resolvectl status` para confirmar que apunta a la IP del lab.
 
 ### Paso 2 — Instalar nslookup
+
 ```bash
 sudo pacman -S bind-tools
 ```
@@ -237,23 +188,18 @@ sudo pacman -S bind-tools
 
 ## ✅ Verificación de servicios
 
-Con el DNS configurado en el cliente, verifica que todos los servicios funcionan correctamente.
-
 ### DNS
 ```bash
-# Resolución directa
 nslookup dns.labredesXY.com 192.168.74.147
 nslookup web.labredesXY.com 192.168.74.147
 nslookup ftp.labredesXY.com 192.168.74.147
-
-# Resolución inversa (PTR)
-nslookup 192.168.74.147 192.168.74.147
+nslookup 192.168.74.147 192.168.74.147   # PTR inverso
 ```
 
 ### Web (Nginx)
 ```bash
 curl http://web.labredesXY.com
-curl -k https://web.labredesXY.com   # -k ignora el certificado autofirmado
+curl -k https://web.labredesXY.com
 ```
 
 ### FTP
@@ -288,5 +234,3 @@ sudo systemctl restart systemd-resolved
 | FTP | `ftp.labredesXY.com` | `X.X.X.X` |
 
 > Reemplaza `XY` con tu número de grupo y sección, y completa las IPs reales.
-
----
