@@ -290,7 +290,6 @@ run_rtmp() {
                 echo ""
                 ok "RTMP server running."
                 info "Stream  → rtmp://$ip/live/$sk"
-                info "Health  → http://$ip"
                 ;;
             b)
                 step "RTMP Server status"
