@@ -26,12 +26,14 @@ redes-lab2-servers/
 ├── rtmp-server/
 │   ├── docker-compose.yml
 │   ├── .env
+│   ├── download_video.sh
 │   ├── videos/
 │   │   └── IVE.mp4
 │   └── nginx/
 │       ├── Dockerfile
 │       └── nginx.conf
-└── installer.sh
+├── installer.sh
+└── stop_services.sh
 ```
 
 ---
@@ -62,6 +64,32 @@ El menú muestra el estado de cada servicio en tiempo real (`●` activo / `○`
 ```
 
 > **Orden recomendado:** configura primero FTP, Web y RTMP con su IP estática. El DNS se configura de último. Las verificaciones con `nslookup`, `curl` y `ftp` se hacen al final, una vez que el DNS esté activo.
+
+---
+
+## 🛑 Detener servicios — `stop_services.sh`
+
+El script `stop_services.sh` permite detener los contenedores Docker de forma individual o todos a la vez, con un menú interactivo que muestra el estado actual de cada servicio.
+
+```bash
+sudo bash stop_services.sh
+```
+
+```
+  Select a service to stop:
+
+  ────────────────────────────────────────────────
+   1)  ●  FTP Server
+   2)  ●  Web Server
+   3)  ●  RTMP Server
+  ────────────────────────────────────────────────
+   a)  Stop all running services
+  ────────────────────────────────────────────────
+   q)  Quit
+```
+
+- `●` verde indica que el contenedor está corriendo, `●` rojo que ya está detenido.
+- La opción `a` ejecuta `docker compose down --volumes` en todos los servicios en secuencia.
 
 ---
 
@@ -104,11 +132,32 @@ Desde el instalador → opción **`4`**, subopción **`a`** (configura stream ke
 
 El instalador pedirá:
 - **Stream key** (default: `1`)
-- **Video file** — nombre del archivo en `rtmp-server/videos/` (default: `IVE.mp4`)
+- **Video file** — selección desde la lista de archivos en `rtmp-server/videos/`, con opción de descargar uno nuevo desde YouTube.
 
-> Coloca tu archivo de video en `rtmp-server/videos/` antes de iniciar.
+> Coloca tu archivo de video en `rtmp-server/videos/` antes de iniciar, o descárgalo directamente con `download_video.sh`.
 
-Para ver logs, subopción **`b`**. Para configurar IP estática, subopción **`c`**.
+Para ver logs, subopción **`b`**. Para descargar videos, subopción **`c`**. Para listar videos descargados, subopción **`d`**. Para configurar IP estática, subopción **`e`**.
+
+#### 📥 `download_video.sh` — Descargador de YouTube
+
+Descarga videos de YouTube en formato MP4 720p para usarlos como fuente del stream RTMP. Puede ejecutarse de forma independiente o desde el instalador (subopción `c`).
+
+```bash
+bash rtmp-server/download_video.sh          # menú interactivo
+bash rtmp-server/download_video.sh --list   # listar videos descargados
+bash rtmp-server/download_video.sh --delete # eliminar un video
+```
+
+El menú interactivo ofrece:
+
+| Opción | Acción |
+|---|---|
+| `a` | Instalar dependencias (`yt-dlp` + `ffmpeg`) |
+| `b` | Descargar un video (por URL o búsqueda por nombre) |
+| `c` | Listar videos descargados |
+| `d` | Eliminar un video |
+
+> **Dependencias:** `yt-dlp` y `ffmpeg`. Se instalan automáticamente con la opción `a` del menú.
 
 ---
 
