@@ -65,7 +65,7 @@ print_menu() {
     divider
     echo -e "   ${BOLD}2)${NC}  ${f}  ${MAGENTA}FTP Server${NC}               ${DIM}ProFTPD · ports 21, 30000-30009${NC}"
     echo -e "   ${BOLD}3)${NC}  ${w}  ${GREEN}Web Server${NC}               ${DIM}Nginx · ports 80, 443 (SSL)${NC}"
-    echo -e "   ${BOLD}4)${NC}  ${r}  ${RED}RTMP Server${NC}              ${DIM}Nginx-RTMP + ffmpeg · 80, 1935${NC}"
+    echo -e "   ${BOLD}4)${NC}  ${r}  ${RED}RTMP Server${NC}              ${DIM}Nginx-RTMP + ffmpeg · port 1935${NC}"
     divider
     echo -e "   ${BOLD}5)${NC}  ${n}  ${BLUE}DNS Server${NC}               ${DIM}BIND9 · no Docker needed${NC}"
     divider
