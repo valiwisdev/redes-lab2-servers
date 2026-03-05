@@ -28,7 +28,6 @@ redes-lab2-servers/
 │   ├── .env
 │   ├── download_video.sh
 │   ├── videos/
-│   │   └── IVE.mp4
 │   └── nginx/
 │       ├── Dockerfile
 │       └── nginx.conf
