@@ -206,46 +206,127 @@ pick_video() {
 # =============================================================================
 #  DOWNLOAD
 # =============================================================================
+
+# ── Search YouTube and let user pick a result ─────────────────────────────────
+# Sets TARGET_URL on success, returns 1 on cancel.
+search_youtube() {
+    local query="$1"
+    step "Searching YouTube for: ${query}"
+    echo ""
+
+    # Fetch top 8 results (id + title + duration)
+    local raw
+    raw=$(yt-dlp \
+        --no-playlist \
+        --flat-playlist \
+        --print "%(id)s|||%(title)s|||%(duration_string)s" \
+        "ytsearch8:${query}" 2>/dev/null) || true
+
+    if [[ -z "$raw" ]]; then
+        error "No results found. Try a different search term."
+        return 1
+    fi
+
+    local ids=() titles=() durations=()
+    while IFS='|||' read -r id title dur; do
+        [[ -z "$id" ]] && continue
+        ids+=("$id")
+        titles+=("$title")
+        durations+=("${dur:-??:??}")
+    done <<< "$raw"
+
+    if [[ ${#ids[@]} -eq 0 ]]; then
+        error "No results found."
+        return 1
+    fi
+
+    echo -e "  ${BOLD}Search results:${NC}"
+    echo ""
+    divider
+    local i
+    for i in "${!ids[@]}"; do
+        printf "   ${BOLD}%2d)${NC}  ${GREEN}%-55s${NC}  ${DIM}%s${NC}\n" \
+               "$((i+1))" "${titles[$i]}" "${durations[$i]}"
+    done
+    printf "   ${BOLD} q)${NC}  ${DIM}Cancel${NC}\n"
+    divider
+    echo ""
+
+    while true; do
+        read -rp "  → Select [1-${#ids[@]}]: " pick
+        [[ "$pick" =~ ^[qQ]$ ]] && return 1
+        if [[ "$pick" =~ ^[0-9]+$ ]] \
+           && (( pick >= 1 && pick <= ${#ids[@]} )); then
+            TARGET_URL="https://www.youtube.com/watch?v=${ids[$((pick-1))]}"
+            info "Selected: ${titles[$((pick-1))]}"
+            return 0
+        fi
+        warn "Enter a number between 1 and ${#ids[@]}, or q to cancel."
+    done
+}
+
 download_interactive() {
     require_deps || return 1
 
+    local fmt="bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]"
+
     echo ""
-    echo -e "  ${BOLD}${MAGENTA}YouTube Video Downloader${NC}"
-    echo -e "  ${DIM}Downloads are saved to: $VIDEOS_DIR${NC}"
+    echo -e "  ${BOLD}${MAGENTA}YouTube Video Downloader${NC}  ${DIM}· 720p MP4${NC}"
+    echo -e "  ${DIM}Saved to: $VIDEOS_DIR${NC}"
     echo ""
     divider
     echo ""
 
     while true; do
-        read -rp "  YouTube URL (or 'q' to cancel): " url
-        [[ "$url" =~ ^[qQ]$ || -z "$url" ]] && { info "Download cancelled."; return 0; }
-
-        # Validate it looks like a URL
-        if [[ ! "$url" =~ ^https?:// ]]; then
-            warn "Please enter a full URL starting with http:// or https://"
-            continue
-        fi
-
+        echo -e "   ${BOLD}1)${NC}  Paste a YouTube URL"
+        echo -e "   ${BOLD}2)${NC}  Search by name"
+        echo -e "   ${BOLD}q)${NC}  Cancel"
         echo ""
-        local fmt="bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]"
-        info "Format: 720p MP4"
+        read -rp "  → Option: " mode
+        echo ""
 
-        # Sanitize filename: use video title, replace spaces with underscores
-        local out_tmpl="$VIDEOS_DIR/%(title)s.%(ext)s"
+        TARGET_URL=""
 
+        case "$mode" in
+            1)
+                read -rp "  YouTube URL: " url
+                [[ "$url" =~ ^[qQ]$ || -z "$url" ]] && { info "Cancelled."; return 0; }
+                if [[ ! "$url" =~ ^https?:// ]]; then
+                    warn "Please enter a full URL starting with https://"
+                    continue
+                fi
+                TARGET_URL="$url"
+                ;;
+            2)
+                read -rp "  Search term: " query
+                [[ "$query" =~ ^[qQ]$ || -z "$query" ]] && { info "Cancelled."; return 0; }
+                echo ""
+                search_youtube "$query" || { echo ""; continue; }
+                ;;
+            q|Q|"") info "Cancelled."; return 0 ;;
+            *) warn "Unknown option."; continue ;;
+        esac
+
+        [[ -z "$TARGET_URL" ]] && continue
+
+        # ── Fetch title ───────────────────────────────────────────────────────
         step "Fetching video info..."
         local title
-        title=$(yt-dlp --no-playlist --get-title "$url" 2>/dev/null || echo "unknown")
-        info "Title: $title"
+        title=$(yt-dlp --no-playlist --get-title "$TARGET_URL" 2>/dev/null \
+                || echo "unknown")
+        info "Title : $title"
+        info "Format: 720p MP4"
         echo ""
 
+        # ── Optional custom filename ──────────────────────────────────────────
+        local out_tmpl="$VIDEOS_DIR/%(title)s.%(ext)s"
         read -rp "  Custom filename? (leave blank to use video title): " custom_name
         if [[ -n "$custom_name" ]]; then
-            # Strip extension if provided, we'll add it
             custom_name="${custom_name%.mp4}"
             out_tmpl="$VIDEOS_DIR/${custom_name}.%(ext)s"
         fi
 
+        # ── Download ──────────────────────────────────────────────────────────
         step "Downloading..."
         echo ""
 
@@ -256,18 +337,19 @@ download_interactive() {
             --output "$out_tmpl" \
             --progress \
             --restrict-filenames \
-            "$url"; then
+            "$TARGET_URL"; then
 
             echo ""
             ok "Download complete!"
             list_videos
         else
-            error "Download failed. Check the URL and try again."
+            error "Download failed. Check the URL / search term and try again."
         fi
 
         echo ""
         read -rp "  Download another video? (y/N): " again
         [[ "$again" =~ ^[yY]$ ]] || break
+        echo ""
     done
 }
 
