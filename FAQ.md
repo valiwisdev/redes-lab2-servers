@@ -104,9 +104,6 @@ Para que Docker espere a que el contenedor `rtmp-nginx` esté levantado antes de
 **¿Qué hace `load_module /usr/lib/nginx/modules/ngx_rtmp_module.so`?**
 Carga dinámicamente el módulo RTMP en Nginx al arrancar. Nginx no trae RTMP integrado — es un módulo externo que se instala por separado (`libnginx-mod-rtmp`) y se activa con esta directiva al inicio del archivo de configuración.
 
-**¿Por qué el servidor HTTP solo responde `"RTMP server OK"` en el puerto 80?**
-El puerto 80 es solo un health check para verificar que el contenedor está vivo. El servicio real es RTMP en el puerto 1935. No se sirve contenido web real porque el propósito de este servidor es exclusivamente la transmisión de video.
-
 **¿Qué significa `record off`?**
 Le indica a Nginx que no guarde en disco una copia de los streams recibidos. Si estuviera en `on`, cada transmisión se grabaría como archivo en el servidor, consumiendo espacio innecesariamente para este laboratorio.
 
