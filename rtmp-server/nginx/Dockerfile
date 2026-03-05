@@ -7,6 +7,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY nginx.conf /etc/nginx/nginx.conf
 
-EXPOSE 80 1935
+EXPOSE 1935
 
 CMD ["nginx", "-g", "daemon off;"]
