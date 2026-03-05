@@ -28,65 +28,85 @@ VIDEOS_DIR="$SCRIPT_DIR/videos"
 mkdir -p "$VIDEOS_DIR"
 
 # =============================================================================
-#  DEPENDENCY CHECK
+#  DEPENDENCY HELPERS
 # =============================================================================
-ensure_ytdlp() {
+
+# ── Silent status checks ──────────────────────────────────────────────────────
+deps_installed() {
+    command -v yt-dlp &>/dev/null && command -v ffmpeg &>/dev/null
+}
+
+dep_status_line() {
+    local ytdlp_s ffmpeg_s
     if command -v yt-dlp &>/dev/null; then
-        ok "yt-dlp found: $(yt-dlp --version)"
-        return 0
-    fi
-
-    warn "yt-dlp is not installed."
-    read -rp "  Install it now? (Y/n): " ans
-    if [[ "$ans" =~ ^[nN]$ ]]; then
-        error "yt-dlp is required. Aborting."
-        exit 1
-    fi
-
-    step "Installing yt-dlp..."
-    if command -v pip3 &>/dev/null; then
-        pip3 install -q yt-dlp
-    elif command -v pip &>/dev/null; then
-        pip install -q yt-dlp
+        ytdlp_s="${GREEN}yt-dlp $(yt-dlp --version 2>/dev/null)${NC}"
     else
-        # Fallback: download binary directly
-        local bin_path="/usr/local/bin/yt-dlp"
-        curl -fsSL "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" \
-            -o "$bin_path"
-        chmod +x "$bin_path"
+        ytdlp_s="${RED}yt-dlp not installed${NC}"
+    fi
+    if command -v ffmpeg &>/dev/null; then
+        ffmpeg_s="${GREEN}ffmpeg $(ffmpeg -version 2>&1 | awk '/ffmpeg version/{print $3}')${NC}"
+    else
+        ffmpeg_s="${RED}ffmpeg not installed${NC}"
+    fi
+    echo -e "  ${DIM}${ytdlp_s}  |  ${ffmpeg_s}${NC}"
+}
+
+# ── Install both dependencies ─────────────────────────────────────────────────
+install_deps() {
+    echo ""
+    step "Installing dependencies (yt-dlp + ffmpeg)..."
+    echo ""
+
+    # ── ffmpeg ────────────────────────────────────────────────────────────────
+    if command -v ffmpeg &>/dev/null; then
+        ok "ffmpeg already installed: $(ffmpeg -version 2>&1 | awk '/ffmpeg version/{print $3}')"
+    else
+        step "Installing ffmpeg..."
+        if command -v apt-get &>/dev/null; then
+            apt-get update -qq && apt-get install -y -q ffmpeg
+        elif command -v yum &>/dev/null; then
+            yum install -y -q ffmpeg
+        else
+            error "Unsupported package manager — install ffmpeg manually."
+        fi
+        command -v ffmpeg &>/dev/null \
+            && ok "ffmpeg installed." \
+            || error "ffmpeg installation failed."
     fi
 
+    # ── yt-dlp ────────────────────────────────────────────────────────────────
     if command -v yt-dlp &>/dev/null; then
-        ok "yt-dlp installed: $(yt-dlp --version)"
+        ok "yt-dlp already installed: $(yt-dlp --version)"
     else
-        error "Failed to install yt-dlp. Install it manually: pip3 install yt-dlp"
-        exit 1
+        step "Installing yt-dlp..."
+        if command -v pip3 &>/dev/null; then
+            pip3 install -q yt-dlp
+        elif command -v pip &>/dev/null; then
+            pip install -q yt-dlp
+        else
+            local bin_path="/usr/local/bin/yt-dlp"
+            curl -fsSL "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" \
+                -o "$bin_path"
+            chmod +x "$bin_path"
+        fi
+        command -v yt-dlp &>/dev/null \
+            && ok "yt-dlp installed: $(yt-dlp --version)" \
+            || error "yt-dlp installation failed. Try: pip3 install yt-dlp"
     fi
 }
 
-ensure_ffmpeg() {
-    if command -v ffmpeg &>/dev/null; then
-        ok "ffmpeg found: $(ffmpeg -version 2>&1 | head -1)"
-        return 0
-    fi
-
-    warn "ffmpeg is not installed (needed to merge video+audio streams)."
-    read -rp "  Install it now? (Y/n): " ans
-    if [[ "$ans" =~ ^[nN]$ ]]; then
-        warn "ffmpeg skipped — some videos may download without audio."
-        return 0
-    fi
-
-    step "Installing ffmpeg..."
-    if command -v apt-get &>/dev/null; then
-        apt-get update -qq && apt-get install -y -q ffmpeg
-    elif command -v yum &>/dev/null; then
-        yum install -y ffmpeg
-    else
-        error "Package manager not supported. Install ffmpeg manually."
+# ── Gate: call at the top of any action that needs the deps ───────────────────
+# Returns 1 and prints a message if deps are missing, so the caller can return
+# immediately back to the menu without doing any work.
+require_deps() {
+    if ! deps_installed; then
+        echo ""
+        error "Dependencies are not installed."
+        info  "Select option ${BOLD}a) Install dependencies${NC} from the menu first."
+        echo ""
+        read -rp "  Press Enter to return to menu..." _
         return 1
     fi
-    ok "ffmpeg installed."
 }
 
 # =============================================================================
@@ -187,8 +207,7 @@ pick_video() {
 #  DOWNLOAD
 # =============================================================================
 download_interactive() {
-    ensure_ytdlp
-    ensure_ffmpeg
+    require_deps || return 1
 
     echo ""
     echo -e "  ${BOLD}${MAGENTA}YouTube Video Downloader${NC}"
@@ -256,6 +275,7 @@ download_interactive() {
 #  DELETE VIDEO
 # =============================================================================
 delete_video() {
+    require_deps || return 1
     if ! list_videos; then return; fi
 
     local files=()
@@ -295,23 +315,35 @@ case "${1:-}" in
         ;;
     *)
         # Standalone interactive mode
-        echo ""
-        echo -e "  ${BOLD}${MAGENTA}╔══════════════════════════════════════════╗${NC}"
-        echo -e "  ${BOLD}${MAGENTA}║${NC}  ${BOLD}YouTube → RTMP Video Downloader${NC}       ${BOLD}${MAGENTA}║${NC}"
-        echo -e "  ${BOLD}${MAGENTA}╚══════════════════════════════════════════╝${NC}"
-        echo ""
-        echo -e "   ${BOLD}a)${NC}  Download a YouTube video"
-        echo -e "   ${BOLD}b)${NC}  List downloaded videos"
-        echo -e "   ${BOLD}c)${NC}  Delete a video"
-        echo -e "   ${BOLD}q)${NC}  Quit"
-        echo ""
-        read -rp "  → Option: " opt
-        case "$opt" in
-            a) download_interactive ;;
-            b) list_videos          ;;
-            c) delete_video         ;;
-            q|Q|"") exit 0         ;;
-            *) warn "Unknown option." ;;
-        esac
+        while true; do
+            echo ""
+            echo -e "  ${BOLD}${MAGENTA}╔══════════════════════════════════════════╗${NC}"
+            echo -e "  ${BOLD}${MAGENTA}║${NC}  ${BOLD}YouTube → RTMP Video Downloader${NC}       ${BOLD}${MAGENTA}║${NC}"
+            echo -e "  ${BOLD}${MAGENTA}╚══════════════════════════════════════════╝${NC}"
+            echo ""
+            dep_status_line
+            echo ""
+            divider
+            echo -e "   ${BOLD}a)${NC}  Install dependencies       ${DIM}yt-dlp + ffmpeg${NC}"
+            divider
+            echo -e "   ${BOLD}b)${NC}  Download a YouTube video"
+            echo -e "   ${BOLD}c)${NC}  List downloaded videos"
+            echo -e "   ${BOLD}d)${NC}  Delete a video"
+            divider
+            echo -e "   ${BOLD}q)${NC}  Quit"
+            echo ""
+            read -rp "  → Option: " opt
+            case "$opt" in
+                a) install_deps ;;
+                b) download_interactive ;;
+                c) list_videos ;;
+                d) delete_video ;;
+                q|Q|"") exit 0 ;;
+                *) warn "Unknown option." ;;
+            esac
+
+            echo ""; divider
+            read -rp "  Press Enter to continue..." _
+        done
         ;;
 esac
