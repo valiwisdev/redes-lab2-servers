@@ -2,7 +2,8 @@
 
 set -e
 
-# Auto-detect machine IP
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
 IP=$(ip -o -4 route show to default | awk '{print $5}' | head -1 | xargs -I{} ip -o -4 addr show {} | awk '{print $4}' | cut -d'/' -f1)
 
 if [[ -z "$IP" ]]; then
