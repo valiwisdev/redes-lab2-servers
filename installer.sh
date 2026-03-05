@@ -250,47 +250,146 @@ run_nginx_web() {
 # =============================================================================
 #  4 — RTMP
 # =============================================================================
+
+# ── Video picker: shows numbered list + download option ───────────────────────
+# Sets PICKED_VIDEO on success, returns 1 if user cancels.
+rtmp_pick_video() {
+    local rtmp_dir="$1"
+    local videos_dir="$rtmp_dir/videos"
+    local dl_script="$rtmp_dir/download_video.sh"
+
+    mkdir -p "$videos_dir"
+
+    # Build array of video files
+    local files=()
+    while IFS= read -r -d '' f; do
+        files+=("$f")
+    done < <(find "$videos_dir" -maxdepth 1 -name "*.mp4" -print0 2>/dev/null | sort -z)
+
+    local total_opts=$(( ${#files[@]} + 1 ))   # +1 for the "download" entry
+
+    echo ""
+    echo -e "  ${BOLD}Select a video to stream:${NC}"
+    echo ""
+    divider
+
+    if [[ ${#files[@]} -eq 0 ]]; then
+        echo -e "   ${DIM}(no videos in $videos_dir)${NC}"
+    else
+        local i=1
+        for f in "${files[@]}"; do
+            local name size
+            name=$(basename "$f")
+            size=$(du -sh "$f" 2>/dev/null | cut -f1)
+            printf "   ${BOLD}%2d)${NC}  ${GREEN}%-50s${NC}  ${DIM}%s${NC}\n" \
+                   "$i" "$name" "$size"
+            ((i++))
+        done
+    fi
+
+    printf "   ${BOLD}%2d)${NC}  ${CYAN}⬇  Download a new video from YouTube${NC}\n" \
+           "$total_opts"
+    printf "   ${BOLD} q)${NC}  ${DIM}Cancel${NC}\n"
+    divider
+    echo ""
+
+    while true; do
+        read -rp "  → Select [1-${total_opts}]: " choice
+
+        [[ "$choice" =~ ^[qQ]$ ]] && return 1
+
+        if [[ "$choice" =~ ^[0-9]+$ ]]; then
+            if (( choice >= 1 && choice < total_opts )); then
+                PICKED_VIDEO=$(basename "${files[$((choice-1))]}")
+                return 0
+            elif (( choice == total_opts )); then
+                # ── Download flow ──────────────────────────────────────────
+                require_script "$dl_script"
+                bash "$dl_script"   # runs standalone interactive mode
+                # Re-display picker after download
+                echo ""; divider
+                rtmp_pick_video "$rtmp_dir"
+                return $?
+            fi
+        fi
+        warn "Please enter a number between 1 and ${total_opts}, or 'q' to cancel."
+    done
+}
+
 run_rtmp() {
     local rtmp_dir="$SCRIPT_DIR/rtmp-server"
     local env_file="$rtmp_dir/.env"
+    local dl_script="$rtmp_dir/download_video.sh"
 
     while true; do
-        service_header "📡" "RTMP Server — Nginx-RTMP + ffmpeg" "rtmp-nginx (port 1935) + ffmpeg-publisher (loops video)"
+        service_header "📡" "RTMP Server — Nginx-RTMP + ffmpeg" \
+            "rtmp-nginx (port 1935) + ffmpeg-publisher (loops video)"
 
-        local sk vf
+        # Read current .env values
+        local sk vf video_status
         sk=$(grep '^STREAM_KEY=' "$env_file" 2>/dev/null | cut -d'=' -f2 || echo "1")
-        vf=$(grep '^VIDEO_FILE='  "$env_file" 2>/dev/null | cut -d'=' -f2 || echo "IVE.mp4")
+        vf=$(grep '^VIDEO_FILE='  "$env_file" 2>/dev/null | cut -d'=' -f2 || echo "—")
 
         if check_docker; then echo -e "  ${DIM}${GREEN}Docker: running${NC}"
         else echo -e "  ${DIM}${RED}Docker: not installed — install it from option 1${NC}"; fi
-        echo -e "  ${DIM}Stream key: ${sk}  |  Video file: ${vf}${NC}"
+
+        # Show video status
+        if [[ -f "$rtmp_dir/videos/$vf" ]]; then
+            video_status="${GREEN}found${NC}"
+        else
+            video_status="${YELLOW}not found${NC}"
+        fi
+        echo -e "  ${DIM}Stream key: ${BOLD}${sk}${NC}  ${DIM}|  Video: ${BOLD}${vf}${NC}  ${DIM}(${NC}${video_status}${DIM})${NC}"
         echo ""
-        echo -e "   ${BOLD}a)${NC}  Configure stream key / video file and start RTMP"
+        echo -e "   ${BOLD}a)${NC}  Configure stream key + pick video and start RTMP"
         echo -e "   ${BOLD}b)${NC}  Show logs / status"
-        echo -e "   ${BOLD}c)${NC}  Set static IP for this server"
+        echo -e "   ${BOLD}c)${NC}  ${MAGENTA}Download YouTube videos${NC}           ${DIM}yt-dlp${NC}"
+        echo -e "   ${BOLD}d)${NC}  List downloaded videos"
+        echo -e "   ${BOLD}e)${NC}  Set static IP for this server"
         echo -e "   ${BOLD}q)${NC}  Back to main menu"
         echo ""
         read -rp "  → Option: " opt
 
         case "$opt" in
             a)
-                require_docker || return
+                require_docker || { read -rp "  Press Enter to continue..." _; continue; }
                 require_script "$rtmp_dir/docker-compose.yml"
+
+                # ── Stream key ────────────────────────────────────────────
                 echo ""
-                read -rp "  Stream key  [${sk}]: " new_sk; new_sk="${new_sk:-$sk}"
-                read -rp "  Video file  [${vf}]: " new_vf; new_vf="${new_vf:-$vf}"
-                [[ ! -f "$rtmp_dir/videos/$new_vf" ]] && \
+                read -rp "  Stream key [${sk}]: " new_sk
+                new_sk="${new_sk:-$sk}"
+
+                # ── Video picker ──────────────────────────────────────────
+                PICKED_VIDEO=""
+                if rtmp_pick_video "$rtmp_dir"; then
+                    new_vf="$PICKED_VIDEO"
+                else
+                    info "Video selection cancelled — keeping current: ${vf}"
+                    new_vf="$vf"
+                fi
+
+                # Validate file exists
+                if [[ ! -f "$rtmp_dir/videos/$new_vf" ]]; then
                     warn "Video not found in rtmp-server/videos/ — place it there before starting."
+                fi
+
+                # Save .env
                 printf 'STREAM_KEY=%s\nVIDEO_FILE=%s\n' "$new_sk" "$new_vf" > "$env_file"
-                ok ".env saved."
+                ok ".env saved  →  key=${new_sk}  video=${new_vf}"
+
+                # Start containers
                 step "Starting RTMP containers..."
                 cd "$rtmp_dir" && docker compose up -d --build && cd "$SCRIPT_DIR"
+
                 local ip; ip=$(hostname -I | awk '{print $1}')
-                sk=$(grep '^STREAM_KEY=' "$env_file" 2>/dev/null | cut -d'=' -f2 || echo "1")
+                sk=$(grep '^STREAM_KEY=' "$env_file" | cut -d'=' -f2)
                 echo ""
                 ok "RTMP server running."
                 info "Stream  → rtmp://$ip/live/$sk"
+                info "Preview → ffplay rtmp://$ip/live/$sk"
                 ;;
+
             b)
                 step "RTMP Server status"
                 docker ps --filter name=rtmp-nginx --filter name=ffmpeg-publisher \
@@ -299,7 +398,18 @@ run_rtmp() {
                 echo ""
                 info "Full logs: cd rtmp-server && docker compose logs -f"
                 ;;
-            c) submenu_static_ip ;;
+
+            c)
+                require_script "$dl_script"
+                bash "$dl_script"
+                ;;
+
+            d)
+                require_script "$dl_script"
+                bash "$dl_script" --list
+                ;;
+
+            e) submenu_static_ip ;;
             q|Q|"") return ;;
             *) warn "Unknown option: '$opt'" ;;
         esac
