@@ -55,7 +55,7 @@ El menú muestra el estado de cada servicio en tiempo real (`●` activo / `○`
   ────────────────────────────────────────────────
    2)  ○  FTP Server               ProFTPD · ports 21, 30000-30009
    3)  ○  Web Server               Nginx · ports 80, 443 (SSL)
-   4)  ○  RTMP Server              Nginx-RTMP + ffmpeg · 80, 1935
+   4)  ○  RTMP Server              Nginx-RTMP + ffmpeg · port 1935
   ────────────────────────────────────────────────
    5)  ○  DNS Server               BIND9 · no Docker needed
   ────────────────────────────────────────────────
